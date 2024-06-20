@@ -7,7 +7,97 @@ from django.conf import settings
 from django.shortcuts import redirect
 from django.views import View
 from django.views.generic import TemplateView
+
+from django.http import HttpResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class StripeWebhookView(View):
+    """
+    Stripe webhook view to hadle checkout session completed event.
+    """
+
+    def post(self, request, format=None):
+        payload=request.body
+        endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
+        sig_header= request.META["HTTP_STRIPE_SIGNATURE"]
+        event = None
+
+        try:
+            event =stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+        except ValueError as e:
+            #Invalid payload
+            return HttpResponse(status=400)
+        except stripe.error.SignatureVerificationError as e:
+            #Invalid signature
+            return HttpResponse(status=400)
+        
+        if event["type"] == "checkout.session.completed":
+            print("Payment successful")
+
+            session = event["data"]["object"]
+            customer_email = session["customer_details"]["email"]
+            product_id = session["metadata"]["product_id"]
+            product = get_object_or_404(Product, id=product_id)
+
+            send_mail(
+                subject = "Here is your product",
+                message=f"Thanks for your purchase. The URL is : {product.url}",
+                recipient_list=[customer_email],
+                from_email="musauldennis@gmail.com",
+            )
+
+            # can handle other events here
+        return HttpResponse(status=200)
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class StripeWebhookView(View):
+    """ Stripe webhook to handle checkout session"""
+
+    def post(self, request, format=None):
+        payload = request.body
+        endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
+        sig_header = request.META["HTTP_STRIPE_SIGNATURE"]
+        event = None
+
+        try:
+            event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+        except ValueError as e:
+            return HttpResponse(status=400)
+        except stripe.error.SignatureVerificationError as e:
+            #invalid signature
+            return HttpResponse(status=400)
+        
+        if event["type"] == "checkout.session.completed":
+            print("Payment successful")
+            session =  event["data"]["object"]
+            customer_email= session["customer_details"]["email"]
+            product_id = session["metatada"]["product_id"]
+            product = get_object_or_404(Product, id=product_id)
+
+
+            send_mail(
+                subject="Here is your product",
+                message=f"Thanks for your purchase. The URL is: {product.url}",
+                recipient_list=[customer_email],
+                from_email="test@gmail.com",
+            )
+
+            PaymentHistory.objects.create(
+                email=customer_email, product=product, payment_status="completed"
+            ) # Add this
+
+        # Can handle other events here.
+
+        return HttpResponse(status=200)
+
 
 
 

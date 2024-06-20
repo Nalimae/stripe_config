@@ -30,6 +30,7 @@ SECRET_KEY = str(os.getenv('SECRET_KEY'))
 # config/settings for stripe keys
 STRIPE_PUBLISHABLE_KEY= config('STRIPE_PUBLISHABLE_KEY')
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
+STRIPE_WEBHOOK_SECRET= config("STRIPE_WEBHOOK_SECRET")
 
 # config settings
 BACKEND_DOMAIN = config("BACKEND_DOMAIN")
@@ -141,3 +142,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #config/settings.py
 MEDIA_ROOT  = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
